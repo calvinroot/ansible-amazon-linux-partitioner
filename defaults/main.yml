@@ -1,0 +1,4 @@
+---
+# defaults file for amazon-linux-partitioner
+
+amazon_linux_partitioner_tmp_noexec: true

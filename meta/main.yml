@@ -1,0 +1,8 @@
+galaxy_info:
+  author: Ethan Claassen
+  description: Re-partition a Linux AMI in conjunction with the amazon-ebssurrogate Packer Builder
+  company: LendingClub
+  license: All rights reserved
+  min_ansible_version: 2.1
+  galaxy_tags: []
+dependencies: []

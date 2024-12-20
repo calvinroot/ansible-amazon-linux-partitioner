@@ -1,0 +1,184 @@
+---
+# tasks file for amazon-linux-partitioner
+
+- name: Fix partition table
+  ansible.builtin.script: scripts/fix-partition-table.sh
+
+- name: Mount /mnt
+  ansible.posix.mount:
+    fstype: xfs
+    src: /dev/xvdf1
+    path: /mnt
+    state: mounted
+
+- name: Backup directories
+  ansible.builtin.shell: cd /mnt/{{ directory }} && tar -cf /tmp/{{ directory }}.tar --acls --selinux --xattrs .
+  loop: 
+    - var
+    - tmp
+    - home
+  loop_control:
+    loop_var: directory
+
+- name: Clean up mount points
+  ansible.builtin.shell: rm -rf {{ mountpoint }}
+  loop: 
+    - /mnt/var/*
+    - /mnt/var/.updated
+    - /mnt/tmp/*
+    - /mnt/home/*
+  loop_control:
+    loop_var: mountpoint
+
+- name: Get contents of /mnt/tmp
+  ansible.builtin.shell: ls -la /mnt/tmp
+  register: ls_mnt_tmp
+
+- name: Print contents of /mnt/tmp
+  ansible.builtin.debug: 
+    var: ls_mnt_tmp.stdout_lines
+
+- name: Unmount /mnt
+  ansible.posix.mount:
+    path: /mnt
+    state: unmounted
+
+- name: Create new partitions
+  ansible.builtin.script: scripts/create-partitions.sh
+
+- name: Run fdisk -l
+  ansible.builtin.shell: fdisk -l
+  register: fdisk
+
+- name: Print fdisk output
+  ansible.builtin.debug:
+    var: fdisk.stdout_lines
+
+- name: Format partitions
+  ansible.builtin.filesystem:
+    fstype: xfs
+    dev: "{{ device }}"
+  loop:
+    - /dev/xvdf2
+    - /dev/xvdf3
+    - /dev/xvdf4
+    - /dev/xvdf5
+    - /dev/xvdf6
+    - /dev/xvdf7
+  loop_control:
+    loop_var: device
+
+- name: Mount /mnt
+  ansible.posix.mount:
+    fstype: xfs
+    src: /dev/xvdf1
+    path: /mnt
+    state: mounted
+
+- name: Mount /mnt/var
+  ansible.posix.mount:
+    fstype: xfs
+    src: /dev/xvdf2
+    path: /mnt/var
+    state: mounted
+
+- name: Create /mnt/var/tmp and /mnt/var/log mountpoints
+  ansible.builtin.file:
+    path: "{{ var_mountpoint }}"
+    state: directory
+  loop:
+    - /var/tmp
+    - /var/log
+  loop_control:
+    loop_var: var_mountpoint
+
+- name: Mount /mnt/var/tmp
+  ansible.posix.mount:
+    fstype: xfs
+    src: /dev/xvdf3
+    path: /mnt/var/tmp
+    state: mounted
+
+- name: Mount /mnt/var/log
+  ansible.posix.mount:
+    fstype: xfs
+    src: /dev/xvdf4
+    path: /mnt/var/log
+    state: mounted
+
+- name: Create /mnt/var/log/audit mount point
+  ansible.builtin.file:
+    path: /var/log/audit
+    state: directory
+
+- name: Mount /mnt/var/log/audit
+  ansible.posix.mount:
+    fstype: xfs
+    src: /dev/xvdf5
+    path: /mnt/var/log/audit
+    state: mounted
+
+- name: Mount /mnt/tmp filesystem
+  ansible.posix.mount:
+    fstype: xfs
+    src: /dev/xvdf6
+    path: /mnt/tmp
+    state: mounted
+
+- name: Mount /mnt/home filesystem
+  ansible.posix.mount:
+    fstype: xfs
+    src: /dev/xvdf7
+    path: /mnt/home
+    state: mounted
+
+- name: Get mounted filesystems
+  ansible.builtin.shell: mount
+  register: mounted_filesystems
+
+- name: Print mounted filesystems
+  ansible.builtin.debug:
+    var: mounted_filesystems.stdout_lines
+
+- name: Restore directories
+  ansible.builtin.shell: cd /mnt/{{ restore_directory }} && tar -xf /tmp/{{ restore_directory }}.tar --acls --selinux --xattrs
+  loop:
+    - var
+    - tmp
+    - home
+  loop_control:
+    loop_var: restore_directory
+
+- name: Refresh facts
+  ansible.builtin.setup: filter='ansible_mounts'
+
+- name: Update filesystem UUIDs in fstab
+  ansible.builtin.template:
+    src: mnt/etc/fstab.j2
+    dest: /mnt/etc/fstab
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Get fstab
+  ansible.builtin.shell: cat /mnt/etc/fstab
+  register: fstab
+
+- name: Print fstab
+  ansible.builtin.debug:
+    var: fstab.stdout_lines
+
+- name: Umount all filesystems
+  ansible.posix.mount:
+    path: "{{ unmount_partition }}"
+    state: unmounted
+  loop:
+    - /mnt/home
+    - /mnt/var/log/audit
+    - /mnt/var/log
+    - /mnt/var/tmp
+    - /mnt/var
+    - /mnt/tmp
+    - /mnt
+  loop_control:
+    loop_var: unmount_partition

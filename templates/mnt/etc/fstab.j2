@@ -1,0 +1,10 @@
+# Generated with CIS compliant mount options by image-builder
+UUID={{ ansible_mounts | json_query("[?mount == '/mnt'] | [0].uuid") }}     /           xfs    defaults,noatime  1   1
+UUID={{ ansible_mounts | json_query("[?mount == '/mnt/var'] | [0].uuid") }}     /var           xfs    defaults,noatime  1   1
+UUID={{ ansible_mounts | json_query("[?mount == '/mnt/var/tmp'] | [0].uuid") }}     /var/tmp           xfs    defaults,noatime,nodev,noexec,nosuid  1   1
+UUID={{ ansible_mounts | json_query("[?mount == '/mnt/var/log'] | [0].uuid") }}     /var/log           xfs    defaults,noatime  1   1
+UUID={{ ansible_mounts | json_query("[?mount == '/mnt/var/log/audit'] | [0].uuid") }}     /var/log/audit           xfs    defaults,noatime  1   1
+UUID={{ ansible_mounts | json_query("[?mount == '/mnt/tmp'] | [0].uuid") }}     /tmp           xfs    defaults,noatime,nodev,{%- if amazon_linux_partitioner_tmp_noexec -%}noexec,{%- endif -%}nosuid  1   1
+UUID={{ ansible_mounts | json_query("[?mount == '/mnt/home'] | [0].uuid") }}     /home           xfs    defaults,noatime,nodev  1   1
+tmpfs   /dev/shm    tmpfs   defaults,nodev,noexec,nosuid 0   0
+/dev/fd0	/media/floppy0	auto	rw,user,noauto,nosuid,nodev,noexec,utf8	0	0
